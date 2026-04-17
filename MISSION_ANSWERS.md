@@ -35,6 +35,7 @@
 3. Image nhỏ hơn vì bỏ lại build tools/cache ở stage 1 và chỉ giữ runtime + source ở stage 2.
 	- Develop: Disk Usage ~ 1.66 GB, Content Size ~ 424 MB.
 	- Production: Disk Usage ~ 236 MB, Content Size ~ 56.6 MB.
+   - Difference: ~86.6% smaller (theo Content Size).
 
 ### Exercise 2.4: Docker Compose stack
 1. Các service và nhiệm vụ:
@@ -89,3 +90,66 @@ Note: Agent khong expose port ra ngoai, chi Nginx nhan request tu internet.
 - URL: https://agent-railway-production.up.railway.app
 - Health check: `ok` (GET /health)
 - Ask endpoint: "Đây là câu trả lời từ AI agent (mock). Trong production, đây sẽ là response từ OpenAI/Anthro…" (POST /ask).
+- Screenshot: ![Railway deploy](screenshots/railway_deploy.png)
+
+### Exercise 3.2: Render deployment
+- URL: https://ai-agent-kr7p.onrender.com
+- Ask endpoint: "Tôi là AI agent được deploy lên cloud. Câu hỏi của bạn đã được nhận." (POST /ask).
+- Screenshot: ![Render deploy](screenshots/render_deploy.png)
+
+So sánh render.yaml và railway.toml:
+- render.yaml (Render): khai báo infrastructure theo kiểu blueprint (services, redis add-on, env vars, autoDeploy), định nghĩa cả web service và redis trong một file.
+- railway.toml (Railway): tập trung vào build/deploy cho một service (startCommand, healthcheck), env vars set qua dashboard/CLI.
+- Render bắt buộc blueprintPath và rootDir cho repo monorepo; Railway chỉ cần service và auto-detect build.
+- Render cho phép khai báo thêm add-on (redis) trong file; Railway thường tạo service/add-on riêng.
+
+## Part 4: API Security
+
+### Exercise 4.1: API Key authentication
+- API key được check trong hàm `verify_api_key` ở `app.py`, dùng header `X-API-Key`.
+- Thiếu key: trả 401 với thông báo "Missing API key. Include header: X-API-Key: <your-key>".
+- Sai key: trả 403 "Invalid API key.".
+- Rotate key: đổi biến môi trường `AGENT_API_KEY` và restart app.
+- Test:
+   - Có key: trả về answer cho câu hỏi "Hello".
+   - Không có key: trả về lỗi 401 như trên.
+
+### Exercise 4.2: JWT authentication
+- Lấy token từ `/auth/token` với user `student`/`demo123`.
+- Gọi `/ask` với header `Authorization: Bearer <token>`.
+- Kết quả mẫu: "Container là cách đóng gói app để chạy ở mọi nơi. Build once, run anywhere!"
+
+### Exercise 4.3: Rate limiting
+- Algorithm: Sliding Window Counter (đếm request trong cửa sổ 60 giây).
+- Limit: user 10 req/phút, admin 100 req/phút.
+- Bypass admin: role `admin` dùng `rate_limiter_admin` (giới hạn cao hơn).
+- Test: 10 request đầu trả 200 OK; từ request 11 trở đi trả 429 với "Rate limit exceeded" và `retry_after_seconds` giảm dần (ví dụ 39s, 37s, 35s...).
+
+### Exercise 4.4: Cost guard
+- Cost guard được kiểm tra trong `app.py` trước khi gọi LLM qua `cost_guard.check_budget(username)`.
+- Giới hạn: per-user $1/ngày, global $10/ngày (theo `CostGuard`).
+- Vượt budget: per-user trả 402 với "Daily budget exceeded"; nếu vượt global budget trả 503 "Service temporarily unavailable due to budget limits".
+
+## Part 5: Scaling & Reliability
+
+### Exercise 5.1: Health checks
+- `/health`: trả `status: ok`, có `uptime_seconds`, `version`, `environment`.
+- `/ready`: trả `ready: True` và `in_flight_requests`.
+
+### Exercise 5.2: Graceful shutdown
+- Log nhận SIGINT/SIGTERM: "Graceful shutdown initiated..." và "Shutdown complete" trước khi process dừng.
+
+### Exercise 5.3: Stateless design
+- Trạng thái hội thoại không lưu trong memory, mà lưu Redis qua `save_session`, `load_session`, `append_to_history`.
+- Mỗi instance đều đọc/ghi cùng session từ Redis, nên scale nhiều instance không bị mất state.
+- Nếu không có Redis thì fallback in-memory (không scalable) — chỉ để demo.
+
+### Exercise 5.4: Load balancing
+- Chạy stack với 3 agent và Nginx.
+- Gọi 10 request qua `http://localhost/ask` đều trả 200 OK.
+- Log agent ghi nhận nhiều request POST /ask (ví dụ agent-1 xử lý các request trong log mẫu).
+
+### Exercise 5.5: Test stateless
+- `test_stateless.py` tạo session, gửi 5 request và được serve bởi nhiều instance khác nhau.
+- Instances used: instance-658011, instance-80b882, instance-046ae8.
+- History giữ đủ 10 messages, chứng minh session được lưu qua Redis và không phụ thuộc instance.
