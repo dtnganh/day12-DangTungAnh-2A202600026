@@ -163,3 +163,9 @@ So sánh render.yaml và railway.toml:
 
 ### Production readiness
 - check_production_ready.py: 20/20 checks passed (100%).
+
+### Public URL (Railway)
+- https://day12-final-agent-production.up.railway.app
+
+### Public API test
+- /ask với `X-API-Key: final-secret-key` trả về câu trả lời, model `gpt-4o-mini`.

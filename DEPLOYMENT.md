@@ -3,6 +3,7 @@
 ## Public URLs
 - Railway: https://agent-railway-production.up.railway.app
 - Render: https://ai-agent-kr7p.onrender.com
+- Final Project (Railway): https://day12-final-agent-production.up.railway.app
 
 ## Platform
 Railway + Render
@@ -32,6 +33,22 @@ curl -X POST https://ai-agent-kr7p.onrender.com/ask \
   -H "Content-Type: application/json" \
   -d '{"question":"Hello"}'
 ```
+
+### Final Project (Railway) Health Check
+```bash
+curl https://day12-final-agent-production.up.railway.app/health
+```
+
+### Final Project (Railway) API Test
+```bash
+curl -X POST https://day12-final-agent-production.up.railway.app/ask \
+  -H "X-API-Key: final-secret-key" \
+  -H "Content-Type: application/json" \
+  -d '{"question":"Hello"}'
+```
+
+Expected response example:
+{"question":"Hello","answer":"Tôi là AI agent được deploy lên cloud. Câu hỏi của bạn đã được nhận.","model":"gpt-4o-mini"}
 
 ## Environment Variables Set
 - Railway: PORT, AGENT_API_KEY
