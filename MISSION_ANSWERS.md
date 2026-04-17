@@ -153,3 +153,13 @@ So sánh render.yaml và railway.toml:
 - `test_stateless.py` tạo session, gửi 5 request và được serve bởi nhiều instance khác nhau.
 - Instances used: instance-658011, instance-80b882, instance-046ae8.
 - History giữ đủ 10 messages, chứng minh session được lưu qua Redis và không phụ thuộc instance.
+
+## Part 6: Final Project
+
+### Local run & checks
+- /health: status ok, version 1.0.0, environment staging.
+- /ready: ready = True.
+- /ask (API key): trả lời "Deployment là quá trình đưa code từ máy bạn lên server để người khác dùng được.".
+
+### Production readiness
+- check_production_ready.py: 20/20 checks passed (100%).
